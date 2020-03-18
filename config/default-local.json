@@ -1,0 +1,11 @@
+{
+    "dbURL" : "mongodb://:@127.0.0.1:27017/embot?authSource=admin",
+    "timezone" : "Asia/Tokyo",
+    "shortBaseUrl" : "http://embot.local.vn:3050",
+    "port" : "3000",
+    "azure_connectstring" : "DefaultEndpointsProtocol=https;AccountName=botchan;AccountKey=A3TonsB+ILMbvzS/79G8QB8y4SEkTZCZO1whiCLiGqN3hgJvdx79XAL3Exw4oI82LYjpm56pF4kWs14WRziiUQ==;EndpointSuffix=core.windows.net",
+    "azure_storage_container" : "quyet",
+    "azure_storage_matchwatch_container" : "matchwatch",
+    "azure_storage_name" : "botchan",
+    "password_api": "123456"
+}

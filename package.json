@@ -1,0 +1,45 @@
+{
+  "name": "efoec",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "start": "node ./bin/www",
+    "watch": "nodemon --watch app.js --watch model.js --watch routes ./bin/www"
+  },
+  "dependencies": {
+    "azure-storage": "^2.10.3",
+    "config": "^2.0.2",
+    "cookie-parser": "~1.4.4",
+    "crypto-js": "^3.1.8",
+    "currency-formatter": "^1.5.4",
+    "debug": "~2.6.9",
+    "email-validator": "^2.0.4",
+    "express": "~4.16.1",
+    "file-type": "^11.1.0",
+    "get-age": "^1.0.1",
+    "http-errors": "~1.6.3",
+    "i18n": "^0.8.3",
+    "jade": "~1.11.0",
+    "japanese-holidays": "^1.0.8",
+    "libphonenumber-js": "^1.7.18",
+    "moji": "^0.5.1",
+    "moment": "^2.24.0",
+    "moment-holiday": "^1.5.1",
+    "moment-timezone": "^0.5.23",
+    "mongoose": "^4.10.8",
+    "mongoose-simple-random": "^0.4.1",
+    "morgan": "~1.9.1",
+    "puppeteer": "^1.19.0",
+    "request": "^2.88.0",
+    "request-promise": "^4.2.4",
+    "shortid": "^2.2.14",
+    "url": "^0.11.0",
+    "urlencode": "^1.1.0",
+    "valid-url": "^1.0.9",
+    "validator": "^10.11.0",
+    "xml-js": "^1.6.11"
+  },
+  "devDependencies": {
+    "nodemon": "^1.19.1"
+  }
+}
