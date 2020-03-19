@@ -2,79 +2,84 @@ var express = require('express');
 var Parent = require('./parent.class');
 const headless = false;
 const FACEBOOK_URL = "https://www.facebook.com/login/identify?ctx=login&lwv=206";
-
+const LIST_TYPE_REJECT = ["other", "media", "font", "stylesheet", "image"];
+// const LIST_TYPE_REJECT = [];
 class searchFace extends Parent {
     constructor(list_address) {
         super();
-        this.list_address = list_address;
+        this.list_address  = [...new Set(list_address)];
         this.list_result = {};
         this.list_sub_address = [];
         this.number_error = 0;
         this.number_process = 5;
         this.list_page = {};
     }
-
     async getList() {
         return new Promise(async (resolve, reject) => {
             try {
-                const browser = await this.initBrowser(headless);
                 let len_sub = Math.ceil(this.list_address.length / this.number_process);
                 for (let i = 1; i <= this.number_process; i++) {
                     let start_index = len_sub * (i - 1);
                     let end_index = len_sub * i;
+                    var sub_address = this.list_address.slice(start_index, end_index);
+                    this.list_sub_address.push(sub_address);
                     if (end_index > this.list_address.length) {
                         break;
                     }
-                    var sub_address = this.list_address.slice(start_index, end_index);
-                    this.list_sub_address.push(sub_address);
                 }
-
                 var list_job = [];
-
                 this.list_sub_address.forEach(async (list_sub) => {
-                    let page = await this.initPage5(browser,[], []);
-                    list_job.push(this.pareListSub(list_sub, page));
+                    list_job.push(this.pareListSub(list_sub));
                 });
 
-                await Promise.all(list_job).then(err => {
-                    console.log('list result', this.list_result);
+                await Promise.all(
+                    list_job
+                ).then(err => {
+                    resolve(this.list_result)
                 });
-
             } catch (error) {
                 reject(error)
             }
         });
     }
-
-    async pareListSub(list_sub, page) {
+    async pareListSub(list_sub) {
         return new Promise(async (resolve, reject) => {
+            let browser = await this.initBrowser(headless);
             try {
-                var result = {};
+                let page = await this.initPage5(browser, LIST_TYPE_REJECT, []);
                 await this.asyncForEach(list_sub, async (address) => {
                     await this.readPage(address, page);
                 });
-
-                resolve(result)
-
+                await browser.close();
+                resolve(true);
             } catch (error) {
-                reject(error)
+                reject(error);
+                await browser.close();
             }
-
         })
     }
-
     async readPage(address, page) {
         return new Promise(async (resolve, reject) => {
             try {
                 await page.goto(FACEBOOK_URL, { waitUntil: 'networkidle0' });
                 await this.typeElement(page, [{ element: "#identify_email", value: address, type: 'text' }]);
-                await Promise.all([
-                    page.click('input[name="did_submit"]'),
-                    page.waitForNavigation({ waitUntil: 'load' })
-                ]);
-
-                let list_text  = await page.$eval(".uiList .fbLoggedOutAccountInfo .fsl" , el => el.innerText);
-
+                await page.click('input[name="did_submit"]');
+                // await Promise.all([
+                //     page.click('input[name="did_submit"]'), 
+                //     await page.waitForNavigation({ waitUntil: 'domcontentloaded' })
+                // ]);
+                await page.waitFor(1500);
+                await page.evaluate(_ => window.stop());
+                if (await page.$(".uiBoxRed") !== null) {
+                    let list_text = await page.$eval(".uiBoxRed", el => el.innerText);
+                    if (list_text) {
+                        this.list_result[address] = "Không có";
+                    } else {
+                        this.list_result[address] = "Có";
+                    }
+                } else {
+                    this.list_result[address] = "Có";
+                }
                 resolve(true);
             } catch (error) {
                 reject(error);
@@ -83,8 +88,6 @@ class searchFace extends Parent {
         });
     }
 }
-
-
 
 class searchFaceRouter extends Parent {
     constructor() {
@@ -106,16 +109,19 @@ class searchFaceRouter extends Parent {
                 var body = req.body;
                 console.log('-----> confirm api', new Date().toISOString(), body);
                 var list_input = [
-                    'list_sdt'
+                    'list_phone'
                 ];
-
                 var data = this.getDataInput(list_input, body);
-                var search = new searchFace(data.list_sdt);
-                var result = await search.getList();
-                this.is_running = false;
-                res.status(200).json(result);
+                var search = new searchFace(data.list_phone);
+                try {
+                    var result = await search.getList();
+                    this.is_running = false;
+                    res.status(200).json(result);
+                } catch (error) {
+                    res.status(500).json({"message": "Have an error"});
+                }
+                
             }
-
         });
     }
 }

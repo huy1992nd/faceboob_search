@@ -163,7 +163,7 @@ class Parent {
         return page;
     }
 
-    async initPage5(browser, list_file_abort = [], list_url_abort = [], status = true){
+    async initPage5(browser, list_file_abort = [], list_url_abort = [], show_header = false, status = true, ){
         const page = await browser.newPage();
         await page.setRequestInterception(true);
         await page.on("dialog", (dialog) => {
@@ -187,7 +187,9 @@ class Parent {
                 else if (rtype === "document") {
                     request.continue();
                 } else {
-                    console.log(rtype, "--->" , rurl);
+                    if(show_header){
+                        console.log(rtype, "--->" , rurl);
+                    }
                     request.continue();
                 }
             });
