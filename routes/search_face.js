@@ -1,17 +1,18 @@
 var express = require('express');
 var Parent = require('./parent.class');
-const headless = false;
+const headless = true;
 const FACEBOOK_URL = "https://www.facebook.com/login/identify?ctx=login&lwv=206";
 const LIST_TYPE_REJECT = ["other", "media", "font", "stylesheet", "image"];
 // const LIST_TYPE_REJECT = [];
 class searchFace extends Parent {
     constructor(list_address) {
         super();
-        this.list_address  = [...new Set(list_address)];
+        this.list_address = [...new Set(list_address)];
         this.list_result = {};
         this.list_sub_address = [];
         this.number_error = 0;
         this.number_process = 5;
+        this.time_wait = 1000;
         this.list_page = {};
     }
     async getList() {
@@ -22,8 +23,10 @@ class searchFace extends Parent {
                     let start_index = len_sub * (i - 1);
                     let end_index = len_sub * i;
                     var sub_address = this.list_address.slice(start_index, end_index);
-                    this.list_sub_address.push(sub_address);
-                    if (end_index > this.list_address.length) {
+                    if (sub_address.length) {
+                        this.list_sub_address.push(sub_address);
+                    }
+                    if (end_index > this.list_address.length+1) {
                         break;
                     }
                 }
@@ -64,28 +67,60 @@ class searchFace extends Parent {
                 await page.goto(FACEBOOK_URL, { waitUntil: 'networkidle0' });
                 await this.typeElement(page, [{ element: "#identify_email", value: address, type: 'text' }]);
                 await page.click('input[name="did_submit"]');
+                // await page.waitFor(this.time_wait);
+                // await page.evaluate(_ => window.stop());
+                try {
+                     await page.$eval(".uiBoxRed", el => el.innerText);
+                } catch (error) {
+                    try {
+                        await page.waitForNavigation({timeout: 2000});
+                    } catch (error) {
+                    }
+                }
                 // await Promise.all([
-                //     page.click('input[name="did_submit"]'), 
-                //     await page.waitForNavigation({ waitUntil: 'domcontentloaded' })
+                //     page.click('input[name="did_submit"]'),
                 // ]);
-                await page.waitFor(1500);
-                await page.evaluate(_ => window.stop());
+
+                // await page.waitFor('a');
+               
                 if (await page.$(".uiBoxRed") !== null) {
                     let list_text = await page.$eval(".uiBoxRed", el => el.innerText);
                     if (list_text) {
                         this.list_result[address] = "Không có";
                     } else {
-                        this.list_result[address] = "Có";
+                        this.list_result[address] = "Không xác định";
                     }
                 } else {
-                    this.list_result[address] = "Có";
+                    let infor_user = "";
+                    let forgot = await page.$("#forgot-password-link");
+                    if (forgot === null) {
+                        if (await page.$("ul.uiList li:last-child td.fbLoggedOutAccountAuxContent a.uiButton") !== null) {
+                            let href = await page.$eval("ul.uiList li:last-child td.fbLoggedOutAccountAuxContent a.uiButton", el => el.href);
+                            await page.goto(href, { waitUntil: 'networkidle0' });
+                        }
+                        forgot = await page.$("#forgot-password-link");
+                    }
+                    if (forgot !== null) {
+                        await Promise.all([
+                            page.click('#forgot-password-link'),
+                            await page.waitForNavigation()
+                        ]);
+                        if (await page.$("._k0") !== null) {
+                            infor_user = await page.$eval("._k0", el => el.innerText);
+                        }
+                    }
+                    this.list_result[address] = this.parseInfor(infor_user);
                 }
                 resolve(true);
             } catch (error) {
                 reject(error);
             }
-
         });
+    }
+
+    parseInfor(input) {
+        let list_line = input.split("\n");
+        return list_line.filter(item => item && (item.includes("@") || item.includes("+") || !isNaN(item))).join("   Hoặc   ");
     }
 }
 
@@ -118,9 +153,9 @@ class searchFaceRouter extends Parent {
                     this.is_running = false;
                     res.status(200).json(result);
                 } catch (error) {
-                    res.status(500).json({"message": "Have an error"});
+                    this.is_running = false;
+                    res.status(500).json({ "message": "Have an error" });
                 }
-                
             }
         });
     }
