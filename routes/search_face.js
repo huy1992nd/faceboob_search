@@ -1,13 +1,13 @@
 var express = require('express');
 var Parent = require('./parent.class');
-const headless = true;
+const headless = false;
 const FACEBOOK_URL = "https://www.facebook.com/login/identify?ctx=login&lwv=206";
 const LIST_TYPE_REJECT = ["other", "media", "font", "stylesheet", "image"];
 // const LIST_TYPE_REJECT = [];
 class searchFace extends Parent {
     constructor(list_address) {
         super();
-        this.list_address = [...new Set(list_address)];
+        this.list_address = list_address;
         this.list_result = {};
         this.list_sub_address = [];
         this.number_error = 0;
@@ -26,7 +26,7 @@ class searchFace extends Parent {
                     if (sub_address.length) {
                         this.list_sub_address.push(sub_address);
                     }
-                    if (end_index > this.list_address.length+1) {
+                    if (end_index > this.list_address.length + 1) {
                         break;
                     }
                 }
@@ -56,8 +56,8 @@ class searchFace extends Parent {
                 await browser.close();
                 resolve(true);
             } catch (error) {
-                reject(error);
                 await browser.close();
+                reject(error);
             }
         })
     }
@@ -70,10 +70,10 @@ class searchFace extends Parent {
                 // await page.waitFor(this.time_wait);
                 // await page.evaluate(_ => window.stop());
                 try {
-                     await page.$eval(".uiBoxRed", el => el.innerText);
+                    await page.$eval(".uiBoxRed", el => el.innerText);
                 } catch (error) {
                     try {
-                        await page.waitForNavigation({timeout: 2000});
+                        await page.waitForNavigation({ timeout: 2000 });
                     } catch (error) {
                     }
                 }
@@ -82,12 +82,10 @@ class searchFace extends Parent {
                 // ]);
 
                 // await page.waitFor('a');
-               
+
                 if (await page.$(".uiBoxRed") !== null) {
                     let list_text = await page.$eval(".uiBoxRed", el => el.innerText);
-                    if (list_text) {
-                        this.list_result[address] = "Không có";
-                    } else {
+                    if (!list_text) {
                         this.list_result[address] = "Không xác định";
                     }
                 } else {
@@ -109,7 +107,9 @@ class searchFace extends Parent {
                             infor_user = await page.$eval("._k0", el => el.innerText);
                         }
                     }
-                    this.list_result[address] = this.parseInfor(infor_user);
+                    if (infor_user) {
+                        this.list_result[address] = this.parseInfor(infor_user);
+                    }
                 }
                 resolve(true);
             } catch (error) {
@@ -134,30 +134,49 @@ class searchFaceRouter extends Parent {
 
     initRouter() {
         this.router.post('/search', async (req, res, next) => {
-            if (this.is_running) {
+            let time_pre_run = this.is_running ? new Date().getTime() - this.is_running : 0;
+            if (this.is_running && time_pre_run < 10 * 60 * 1000) {
                 res.status(500).json({
                     status: false,
                     message: "Server is running"
                 });
             } else {
-                this.is_running = true;
+                this.is_running = new Date().getTime();
                 var body = req.body;
                 console.log('-----> confirm api', new Date().toISOString(), body);
                 var list_input = [
-                    'list_phone'
+                    'phone',
+                    "up"
                 ];
                 var data = this.getDataInput(list_input, body);
-                var search = new searchFace(data.list_phone);
-                try {
-                    var result = await search.getList();
+                if (data.phone && data.phone.includes("**")) {
+                    try {
+                        let list_phone = [];
+                        let start = 0;
+                        let end = 50;
+                        if (data.up) {
+                            start = 50;
+                            end = 100;
+                        }
+                        for (let i = start; i < end; i++) {
+                            let str_replace = i < 10 ? "0" + i : "" + i;
+                            list_phone.push(data.phone.replace("**", str_replace));
+                        }
+                        var search = new searchFace(list_phone);
+                        var result = await search.getList();
+                        this.is_running = false;
+                        res.status(200).json(result);
+                    } catch (error) {
+                        this.is_running = false;
+                        res.status(500).json({ "message": "Have an error" });
+                    }
+                } else {
                     this.is_running = false;
-                    res.status(200).json(result);
-                } catch (error) {
-                    this.is_running = false;
-                    res.status(500).json({ "message": "Have an error" });
+                    res.status(500).json({ "message": "Không đúng định dạng đầu vào" });
                 }
             }
-        });
+        }
+        );
     }
 }
 
