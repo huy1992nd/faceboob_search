@@ -1,6 +1,6 @@
 var express = require('express');
 var Parent = require('./parent.class');
-const headless = false;
+const headless = true;
 const FACEBOOK_URL = "https://www.facebook.com/login/identify?ctx=login&lwv=206";
 const LIST_TYPE_REJECT = ["other", "media", "font", "stylesheet", "image"];
 // const LIST_TYPE_REJECT = [];

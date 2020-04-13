@@ -532,7 +532,7 @@ class Parent {
                 '--no-first-run',
                 '--no-sandbox',
                 '--no-zygote',
-                // '--single-process'
+                '--single-process'
             ]
         });
         return browser;
